@@ -1,4 +1,4 @@
-module myrecurringtasklib
+module github.com/mpezzolano/myrecurringtasklib
 
 go 1.20
 
