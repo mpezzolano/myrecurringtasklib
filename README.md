@@ -1,13 +1,12 @@
 # Task Scheduler in Go
 
-The `tasks` package in this repository is a simple yet powerful task scheduler written in Go. It allows you to schedule tasks at regular intervals, or run tasks just once at a specific time.
+The tasks package in this repository is a versatile task scheduler written in Go. It allows you to schedule tasks at regular intervals, or run tasks just once at a specific time. Moreover, it gives you control over handling task errors.
 
 ## How it Works
 
-A task in this context is a function with the signature `func() error`. This function represents the task that needs to be performed. The task is wrapped in a struct, `Task`, which includes several configuration options such as the interval to run the task and the time after which to start the task.
+A task in this context is a function with the signature func() error. This function represents the task that needs to be performed. The task is wrapped in a struct, Task, which includes several configuration options such as the interval to run the task, the time after which to start the task, and an error handling function in case the task encounters an error during execution.
 
-The main component of the `tasks` package is the `Scheduler`. The `Scheduler` is responsible for managing and executing all tasks. You can add tasks to a `Scheduler`, and they will be executed in the background at their configured intervals.
-
+The main component of the tasks package is the Scheduler. The Scheduler is responsible for managing and executing all tasks. You can add tasks to a Scheduler, and they will be executed in the background at their configured intervals.
 ## Using the Task Scheduler
 
 ### Creating a New Scheduler
@@ -63,6 +62,10 @@ scheduler.Start()
 ```
 
 That's it! The scheduler will now start running your tasks in the background at their specified intervals.
+
+### Handling Errors
+
+The tasks package comes with enhanced error handling. The OnFail function in each task allows for specific error handling to be defined per task. The package also defines custom error types for more granular error handling and debugging.
 
 ### Contributing
 
