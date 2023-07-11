@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"myrecurringtasklib/tasks"
+	"github.com/mpezzolano/myrecurringtasklib/tasks"
+
 	"time"
 )
 
