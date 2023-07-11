@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/mpezzolano/myrecurringtasklib/tasks"
 
@@ -8,38 +9,56 @@ import (
 )
 
 func main() {
-	scheduler := tasks.New()
-
-	// Def. task 1
-	taskFunc1 := func() error {
+	printNumbers := func() error {
 		for i := 1; i <= 10; i++ {
 			fmt.Println(i)
 		}
 		return nil
 	}
-	task1 := &tasks.Task{
-		Interval:   time.Second * 5,
-		RunOnce:    true,
-		StartAfter: time.Now(),
-		TaskFunc:   &taskFunc1,
-	}
 
-	// Def. task 2
-	taskFunc2 := func() error {
+	printHelloWorld := func() error {
 		fmt.Println("Hello World")
 		return nil
 	}
-	task2 := &tasks.Task{
-		Interval:   time.Second * 5,
-		RunOnce:    true,
-		StartAfter: time.Now(),
-		TaskFunc:   &taskFunc2,
+
+	// failing
+	failingTask := func() error {
+		return errors.New("intentional failure")
 	}
 
-	// Add tasks to scheduler
-	_, _ = scheduler.Add(task1)
-	_, _ = scheduler.Add(task2)
+	onFail := func(err error) {
+		fmt.Printf("Error: %v\n", err)
+	}
 
-	time.Sleep(time.Second * 10)
-	fmt.Println("finish tasks")
+	schd := tasks.New()
+
+	schd.Add(&tasks.Task{
+		Name:       "Print Numbers",
+		Interval:   time.Second * 1,
+		RunOnce:    true,
+		StartAfter: time.Now(),
+		TaskFunc:   &printNumbers,
+		OnFail:     onFail,
+	})
+
+	schd.Add(&tasks.Task{
+		Name:       "Print Hello World",
+		Interval:   time.Second * 1,
+		RunOnce:    true,
+		StartAfter: time.Now(),
+		TaskFunc:   &printHelloWorld,
+		OnFail:     onFail,
+	})
+
+	schd.Add(&tasks.Task{
+		Name:       "Failing Task",
+		Interval:   time.Second * 1,
+		RunOnce:    true,
+		StartAfter: time.Now(),
+		TaskFunc:   &failingTask,
+		OnFail:     onFail,
+	})
+
+	time.Sleep(time.Second * 5)
+	fmt.Println("Finish")
 }

@@ -9,14 +9,25 @@ import (
 	"github.com/rs/xid"
 )
 
+type TaskError struct {
+	ID    string
+	Task  string
+	Cause error
+}
+
+func (e *TaskError) Error() string {
+	return fmt.Sprintf("task %s (ID %s) failed: %v", e.Task, e.ID, e.Cause)
+}
+
 type Task struct {
 	sync.Mutex
 	id         string
+	Name       string
 	Interval   time.Duration
 	RunOnce    bool
 	StartAfter time.Time
 	TaskFunc   *func() error
-	ErrFunc    *func(error)
+	OnFail     func(error)
 	timer      *time.Timer
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -111,8 +122,12 @@ func (schd *Scheduler) scheduleTask(t *Task) {
 
 func (schd *Scheduler) execTask(t *Task) {
 	go func() {
-		if err := (*t.TaskFunc)(); err != nil && t.ErrFunc != nil {
-			go (*t.ErrFunc)(err)
+		if err := (*t.TaskFunc)(); err != nil && t.OnFail != nil {
+			go t.OnFail(&TaskError{
+				ID:    t.id,
+				Task:  t.Name,
+				Cause: err,
+			})
 		}
 		if t.RunOnce {
 			schd.Del(t.id)
