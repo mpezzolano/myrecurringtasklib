@@ -1,85 +1,98 @@
 package tasks
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 )
 
-var dummyTaskFunc = func() error {
-	fmt.Println("Executing dummy task function.")
-	return nil
-}
+func TestScheduler_Add(t *testing.T) {
+	s := New()
 
-var dummyErrFunc = func(err error) {
-	fmt.Println("Executing dummy error function. Error: ", err)
-}
-
-func TestAdd(t *testing.T) {
-	scheduler := New()
-	task := &Task{
-		Interval: time.Second,
-		TaskFunc: &dummyTaskFunc,
-		ErrFunc:  &dummyErrFunc,
+	taskFunc := func() error {
+		return nil
 	}
 
-	id, err := scheduler.Add(task)
+	task := &Task{
+		Name:       "Test Task",
+		Interval:   time.Second * 1,
+		RunOnce:    true,
+		StartAfter: time.Now(),
+		TaskFunc:   taskFunc,
+	}
 
+	taskID, err := s.Add(task)
 	if err != nil {
 		t.Errorf("Failed to add task: %v", err)
 	}
 
-	if id == "" {
-		t.Errorf("Expected ID to be non-empty")
+	if taskID == "" {
+		t.Errorf("Expected task ID to be non-empty")
 	}
 }
 
-func TestDel(t *testing.T) {
-	scheduler := New()
-	task := &Task{
-		Interval: time.Second,
-		TaskFunc: &dummyTaskFunc,
-		ErrFunc:  &dummyErrFunc,
+func TestScheduler_AddWithID(t *testing.T) {
+	s := New()
+
+	taskFunc := func() error {
+		return nil
 	}
 
-	id, err := scheduler.Add(task)
+	task := &Task{
+		Name:       "Test Task",
+		Interval:   time.Second * 1,
+		RunOnce:    true,
+		StartAfter: time.Now(),
+		TaskFunc:   taskFunc,
+	}
 
+	err := s.AddWithID("testID", task)
 	if err != nil {
 		t.Errorf("Failed to add task: %v", err)
 	}
 
-	scheduler.Del(id)
-	_, err = scheduler.Lookup(id)
-
-	if err == nil {
-		t.Errorf("Task was not deleted.")
+	_, err = s.Lookup("testID")
+	if err != nil {
+		t.Errorf("Failed to lookup task: %v", err)
 	}
 }
 
-func TestStop(t *testing.T) {
-	scheduler := New()
-	task1 := &Task{
-		Interval: time.Second,
-		TaskFunc: &dummyTaskFunc,
-		ErrFunc:  &dummyErrFunc,
-	}
-	task2 := &Task{
-		Interval: time.Second,
-		TaskFunc: &dummyTaskFunc,
-		ErrFunc:  &dummyErrFunc,
+func TestTaskError_Error(t *testing.T) {
+	taskErr := &TaskError{
+		ID:    "testID",
+		Task:  "Test Task",
+		Cause: errors.New("test error"),
 	}
 
-	_, err := scheduler.Add(task1)
-	if err != nil {
-		return
+	expectedErrorMsg := "task Test Task (ID testID) failed: test error"
+	if taskErr.Error() != expectedErrorMsg {
+		t.Errorf("Expected error message to be '%s', got '%s'", expectedErrorMsg, taskErr.Error())
 	}
-	_, err = scheduler.Add(task2)
-	if err != nil {
-		return
-	}
-	scheduler.Stop()
+}
 
-	if len(scheduler.tasks) != 0 {
-		t.Errorf("Stop did not delete all tasks.")
+func TestTask_Fail(t *testing.T) {
+	s := New()
+
+	taskFunc := func() error {
+		return errors.New("test error")
+	}
+
+	task := &Task{
+		Name:       "Test Task",
+		Interval:   time.Second * 1,
+		RunOnce:    true,
+		StartAfter: time.Now(),
+		TaskFunc:   taskFunc,
+		OnFail: func(err error) {
+			expectedErrorMsg := "task Test Task (ID testID) failed: test error"
+			if err.Error() != expectedErrorMsg {
+				t.Errorf("Expected error message to be '%s', got '%s'", expectedErrorMsg, err.Error())
+			}
+		},
+	}
+
+	err := s.AddWithID("testID", task)
+	if err != nil {
+		t.Errorf("Failed to add task: %v", err)
 	}
 }

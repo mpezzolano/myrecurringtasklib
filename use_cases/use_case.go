@@ -37,7 +37,7 @@ func main() {
 		Interval:   time.Second * 1,
 		RunOnce:    true,
 		StartAfter: time.Now(),
-		TaskFunc:   &printNumbers,
+		TaskFunc:   printNumbers,
 		OnFail:     onFail,
 	})
 
@@ -46,7 +46,7 @@ func main() {
 		Interval:   time.Second * 1,
 		RunOnce:    true,
 		StartAfter: time.Now(),
-		TaskFunc:   &printHelloWorld,
+		TaskFunc:   printHelloWorld,
 		OnFail:     onFail,
 	})
 
@@ -55,7 +55,7 @@ func main() {
 		Interval:   time.Second * 1,
 		RunOnce:    true,
 		StartAfter: time.Now(),
-		TaskFunc:   &failingTask,
+		TaskFunc:   failingTask,
 		OnFail:     onFail,
 	})
 

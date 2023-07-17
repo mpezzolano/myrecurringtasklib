@@ -26,7 +26,7 @@ type Task struct {
 	Interval   time.Duration
 	RunOnce    bool
 	StartAfter time.Time
-	TaskFunc   *func() error
+	TaskFunc   func() error
 	OnFail     func(error)
 	timer      *time.Timer
 	ctx        context.Context
@@ -122,7 +122,7 @@ func (schd *Scheduler) scheduleTask(t *Task) {
 
 func (schd *Scheduler) execTask(t *Task) {
 	go func() {
-		if err := (*t.TaskFunc)(); err != nil && t.OnFail != nil {
+		if err := (t.TaskFunc)(); err != nil && t.OnFail != nil {
 			go t.OnFail(&TaskError{
 				ID:    t.id,
 				Task:  t.Name,
