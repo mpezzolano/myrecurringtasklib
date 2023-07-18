@@ -7,7 +7,10 @@ import (
 	"time"
 
 	"github.com/rs/xid"
+	"go.uber.org/zap"
 )
+
+var logger, _ = zap.NewProduction()
 
 type TaskError struct {
 	ID    string
@@ -39,21 +42,29 @@ type Scheduler struct {
 }
 
 func New() *Scheduler {
+	logger.Info("Creating new scheduler")
 	return &Scheduler{
 		tasks: make(map[string]*Task),
 	}
 }
 
 func (schd *Scheduler) Add(t *Task) (string, error) {
+	logger.Info("Adding a new task")
 	id := xid.New()
-	return id.String(), schd.AddWithID(id.String(), t)
+	err := schd.AddWithID(id.String(), t)
+	if err != nil {
+		logger.Error("Failed to add task", zap.Error(err))
+	}
+	return id.String(), err
 }
 
 func (schd *Scheduler) AddWithID(id string, t *Task) error {
 	if t.TaskFunc == nil {
+		logger.Error("Task function cannot be nil")
 		return fmt.Errorf("task function cannot be nil")
 	}
 	if t.Interval <= time.Duration(0) {
+		logger.Error("Task interval must be defined")
 		return fmt.Errorf("task interval must be defined")
 	}
 
@@ -63,6 +74,7 @@ func (schd *Scheduler) AddWithID(id string, t *Task) error {
 	defer schd.Unlock()
 
 	if _, ok := schd.tasks[id]; ok {
+		logger.Error("ID already used")
 		return fmt.Errorf("ID already used")
 	}
 
@@ -72,8 +84,10 @@ func (schd *Scheduler) AddWithID(id string, t *Task) error {
 }
 
 func (schd *Scheduler) Del(name string) {
+	logger.Info("Deleting task", zap.String("task", name))
 	t, err := schd.Lookup(name)
 	if err != nil {
+		logger.Error("Failed to delete task", zap.Error(err))
 		return
 	}
 
@@ -97,10 +111,12 @@ func (schd *Scheduler) Lookup(name string) (*Task, error) {
 	if ok {
 		return t, nil
 	}
+	logger.Error("Could not find task within the task list", zap.String("task", name))
 	return nil, fmt.Errorf("could not find task within the task list")
 }
 
 func (schd *Scheduler) Stop() {
+	logger.Info("Stopping scheduler")
 	schd.Lock()
 	defer schd.Unlock()
 
@@ -122,12 +138,14 @@ func (schd *Scheduler) scheduleTask(t *Task) {
 
 func (schd *Scheduler) execTask(t *Task) {
 	go func() {
+		logger.Info("Executing task", zap.String("task", t.Name))
 		if err := (t.TaskFunc)(); err != nil && t.OnFail != nil {
 			go t.OnFail(&TaskError{
 				ID:    t.id,
 				Task:  t.Name,
 				Cause: err,
 			})
+			logger.Error("Task failed", zap.String("task", t.Name), zap.Error(err))
 		}
 		if t.RunOnce {
 			schd.Del(t.id)
