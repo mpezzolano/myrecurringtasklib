@@ -24,16 +24,20 @@ func (e *TaskError) Error() string {
 
 type Task struct {
 	sync.Mutex
-	id         string
-	Name       string
-	Interval   time.Duration
-	RunOnce    bool
-	StartAfter time.Time
-	TaskFunc   func() error
-	OnFail     func(error)
-	timer      *time.Timer
-	ctx        context.Context
-	cancel     context.CancelFunc
+	id            string
+	Name          string
+	Interval      time.Duration
+	RunOnce       bool
+	StartAfter    time.Time
+	TaskFunc      func() error
+	OnFail        func(error)
+	timer         *time.Timer
+	ctx           context.Context
+	cancel        context.CancelFunc
+	ExecutionTime time.Duration
+	LastRun       time.Time
+	SuccessCount  int
+	FailureCount  int
 }
 
 type Scheduler struct {
@@ -138,15 +142,26 @@ func (schd *Scheduler) scheduleTask(t *Task) {
 
 func (schd *Scheduler) execTask(t *Task) {
 	go func() {
-		logger.Info("Executing task", zap.String("task", t.Name))
-		if err := (t.TaskFunc)(); err != nil && t.OnFail != nil {
+		startTime := time.Now()
+		err := (t.TaskFunc)()
+		executionTime := time.Since(startTime)
+
+		t.Lock()
+		t.ExecutionTime = executionTime
+		t.LastRun = startTime
+		if err != nil && t.OnFail != nil {
+			t.FailureCount++
 			go t.OnFail(&TaskError{
 				ID:    t.id,
 				Task:  t.Name,
 				Cause: err,
 			})
 			logger.Error("Task failed", zap.String("task", t.Name), zap.Error(err))
+		} else {
+			t.SuccessCount++
 		}
+		t.Unlock()
+
 		if t.RunOnce {
 			schd.Del(t.id)
 		} else {

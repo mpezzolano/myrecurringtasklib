@@ -6,6 +6,8 @@ The tasks package in this repository is a versatile task scheduler written in Go
 
 A task in this context is a function with the signature func() error. This function represents the task that needs to be performed. The task is wrapped in a struct, Task, which includes several configuration options such as the interval to run the task, the time after which to start the task, and an error handling function in case the task encounters an error during execution.
 
+Now, with the introduction of performance metrics, each `Task` struct also includes fields to track the time taken to execute (`ExecutionTime`), the timestamp of the last run (`LastRun`), as well as success (`SuccessCount`) and failure (`FailureCount`) counts. These metrics are updated each time the task runs, providing real-time data on the performance of each scheduled task.
+
 The main component of the tasks package is the Scheduler. The Scheduler is responsible for managing and executing all tasks. You can add tasks to a Scheduler, and they will be executed in the background at their configured intervals.
 ## Using the Task Scheduler
 
