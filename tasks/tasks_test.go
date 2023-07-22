@@ -6,93 +6,110 @@ import (
 	"time"
 )
 
-func TestScheduler_Add(t *testing.T) {
-	s := New()
+func mockTaskFunc() error {
+	return nil
+}
 
-	taskFunc := func() error {
-		return nil
-	}
+func mockFailingTaskFunc() error {
+	return errors.New("test error")
+}
 
-	task := &Task{
-		Name:       "Test Task",
-		Interval:   time.Second * 1,
-		RunOnce:    true,
-		StartAfter: time.Now(),
-		TaskFunc:   taskFunc,
-	}
+func TestAddTask(t *testing.T) {
+	scheduler := New()
 
-	taskID, err := s.Add(task)
+	taskID, err := scheduler.Add(&Task{
+		Name:     "TestTask",
+		Interval: time.Second * 1,
+		TaskFunc: mockTaskFunc,
+	})
+
 	if err != nil {
 		t.Errorf("Failed to add task: %v", err)
 	}
 
-	if taskID == "" {
-		t.Errorf("Expected task ID to be non-empty")
+	task, _ := scheduler.Lookup(taskID)
+	if task.Name != "TestTask" {
+		t.Errorf("Task was not correctly added to the scheduler")
 	}
 }
 
-func TestScheduler_AddWithID(t *testing.T) {
-	s := New()
+func TestDeleteTask(t *testing.T) {
+	scheduler := New()
 
-	taskFunc := func() error {
-		return nil
-	}
+	taskID, _ := scheduler.Add(&Task{
+		Name:     "TestTask",
+		Interval: time.Second * 1,
+		TaskFunc: mockTaskFunc,
+	})
 
-	task := &Task{
-		Name:       "Test Task",
-		Interval:   time.Second * 1,
-		RunOnce:    true,
-		StartAfter: time.Now(),
-		TaskFunc:   taskFunc,
-	}
+	scheduler.Del(taskID)
+	task, err := scheduler.Lookup(taskID)
 
-	err := s.AddWithID("testID", task)
-	if err != nil {
-		t.Errorf("Failed to add task: %v", err)
-	}
-
-	_, err = s.Lookup("testID")
-	if err != nil {
-		t.Errorf("Failed to lookup task: %v", err)
+	if err == nil {
+		t.Errorf("Task was not correctly deleted: %v", task)
 	}
 }
 
-func TestTaskError_Error(t *testing.T) {
-	taskErr := &TaskError{
-		ID:    "testID",
-		Task:  "Test Task",
+func TestTaskExecution(t *testing.T) {
+	scheduler := New()
+
+	taskID, _ := scheduler.Add(&Task{
+		Name:     "TestTask",
+		Interval: time.Second * 1,
+		TaskFunc: mockTaskFunc,
+	})
+
+	time.Sleep(time.Second * 2)
+
+	task, _ := scheduler.Lookup(taskID)
+	if task.SuccessCount != 1 {
+		t.Errorf("Task did not execute successfully")
+	}
+}
+
+func TestFailingTask(t *testing.T) {
+	scheduler := New()
+
+	taskID, _ := scheduler.Add(&Task{
+		Name:     "FailingTask",
+		Interval: time.Second * 1,
+		TaskFunc: mockFailingTaskFunc,
+	})
+
+	time.Sleep(time.Second * 2)
+
+	task, _ := scheduler.Lookup(taskID)
+	if task.FailureCount != 1 {
+		t.Errorf("Task failure was not registered")
+	}
+}
+
+func TestTaskError(t *testing.T) {
+	err := &TaskError{
+		ID:    "1",
+		Task:  "FailingTask",
 		Cause: errors.New("test error"),
 	}
 
-	expectedErrorMsg := "task Test Task (ID testID) failed: test error"
-	if taskErr.Error() != expectedErrorMsg {
-		t.Errorf("Expected error message to be '%s', got '%s'", expectedErrorMsg, taskErr.Error())
+	expectedError := "task FailingTask (ID 1) failed: test error"
+
+	if err.Error() != expectedError {
+		t.Errorf("Got %v, want %v", err.Error(), expectedError)
 	}
 }
 
-func TestTask_Fail(t *testing.T) {
-	s := New()
+func TestStopScheduler(t *testing.T) {
+	scheduler := New()
 
-	taskFunc := func() error {
-		return errors.New("test error")
-	}
+	scheduler.Add(&Task{
+		Name:     "TestTask",
+		Interval: time.Second * 1,
+		TaskFunc: mockTaskFunc,
+	})
 
-	task := &Task{
-		Name:       "Test Task",
-		Interval:   time.Second * 1,
-		RunOnce:    true,
-		StartAfter: time.Now(),
-		TaskFunc:   taskFunc,
-		OnFail: func(err error) {
-			expectedErrorMsg := "task Test Task (ID testID) failed: test error"
-			if err.Error() != expectedErrorMsg {
-				t.Errorf("Expected error message to be '%s', got '%s'", expectedErrorMsg, err.Error())
-			}
-		},
-	}
+	scheduler.Stop()
 
-	err := s.AddWithID("testID", task)
-	if err != nil {
-		t.Errorf("Failed to add task: %v", err)
+	if len(scheduler.tasks) != 0 {
+		t.Errorf("Scheduler did not stop all tasks")
 	}
 }
