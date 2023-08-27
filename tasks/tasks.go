@@ -3,45 +3,12 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"sync"
+	"os"
 	"time"
 
 	"github.com/rs/xid"
 	"go.uber.org/zap"
 )
-
-type TaskError struct {
-	ID    string
-	Task  string
-	Cause error
-}
-
-func (e *TaskError) Error() string {
-	return fmt.Sprintf("task %s (ID %s) failed: %v", e.Task, e.ID, e.Cause)
-}
-
-type Task struct {
-	sync.Mutex
-	id            string
-	Name          string
-	Interval      time.Duration
-	RunOnce       bool
-	StartAfter    time.Time
-	TaskFunc      func() error
-	OnFail        func(error)
-	timer         *time.Timer
-	ctx           context.Context
-	cancel        context.CancelFunc
-	ExecutionTime time.Duration
-	LastRun       time.Time
-	SuccessCount  int
-	FailureCount  int
-}
-
-type Scheduler struct {
-	sync.RWMutex
-	tasks map[string]*Task
-}
 
 var logger, _ = zap.NewProduction()
 
@@ -49,6 +16,22 @@ func New() *Scheduler {
 	logger.Info("Creating new scheduler")
 	return &Scheduler{
 		tasks: make(map[string]*Task),
+	}
+}
+
+func logTaskToFile(id string, status string) {
+	fileName := "task_logs.txt"
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return
+	}
+
+	logEntry := fmt.Sprintf("Task ID: %s, Date: %s, Status: %s\n", id, time.Now().Format(time.RFC3339), status)
+	_, err = file.WriteString(logEntry)
+	if err != nil {
+		// Aquí puedes agregar algún manejo de error.
+		fmt.Println("Error writing to file:", err)
 	}
 }
 
@@ -157,8 +140,10 @@ func (schd *Scheduler) execTask(t *Task) {
 				Cause: err,
 			})
 			logger.Error("Task failed", zap.String("task", t.Name), zap.Error(err))
+			logTaskToFile(t.id, "Failed")
 		} else {
 			t.SuccessCount++
+			logTaskToFile(t.id, "Success")
 		}
 		t.Unlock()
 
