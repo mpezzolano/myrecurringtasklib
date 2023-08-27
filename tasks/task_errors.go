@@ -1,22 +1,21 @@
-// task_errors.go
-
 package tasks
 
 import "fmt"
+
+type TaskError struct {
+	ID    string
+	Task  string
+	Cause error
+}
+
+func (e *TaskError) Error() string {
+	return fmt.Sprintf("task %s (ID %s) failed: %v", e.Task, e.ID, e.Cause)
+}
 
 type TaskNotFoundError struct {
 	TaskID string
 }
 
 func (e *TaskNotFoundError) Error() string {
-	return fmt.Sprintf("Task with ID %s not found", e.TaskID)
-}
-
-type TaskExecutionError struct {
-	TaskID  string
-	Message string
-}
-
-func (e *TaskExecutionError) Error() string {
-	return fmt.Sprintf("Error executing task with ID %s: %s", e.TaskID, e.Message)
+	return fmt.Sprintf("task with ID %s not found", e.TaskID)
 }
