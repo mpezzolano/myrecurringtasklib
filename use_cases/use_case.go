@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mpezzolano/myrecurringtasklib/tasks"
-
 	"time"
 )
 
@@ -21,7 +20,7 @@ func main() {
 		return nil
 	}
 
-	// failing
+	// failing task
 	failingTask := func() error {
 		return errors.New("intentional failure")
 	}
@@ -58,6 +57,17 @@ func main() {
 		TaskFunc:   failingTask,
 		OnFail:     onFail,
 	})
+
+	// Try to lookup a task that doesn't exist
+	_, err := schd.Lookup("NonExistingTask")
+	if err != nil {
+		// We'll check if the error is of type TaskNotFoundError
+		if _, ok := err.(*tasks.TaskNotFoundError); ok {
+			fmt.Println("Error Custom: task doesn't exist")
+		} else {
+			fmt.Printf("Error: %v\n", err)
+		}
+	}
 
 	time.Sleep(time.Second * 5)
 	fmt.Println("Finish")
