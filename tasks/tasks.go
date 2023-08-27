@@ -30,7 +30,6 @@ func logTaskToFile(id string, status string) {
 	logEntry := fmt.Sprintf("Task ID: %s, Date: %s, Status: %s\n", id, time.Now().Format(time.RFC3339), status)
 	_, err = file.WriteString(logEntry)
 	if err != nil {
-		// Aquí puedes agregar algún manejo de error.
 		fmt.Println("Error writing to file:", err)
 	}
 }
@@ -99,7 +98,8 @@ func (schd *Scheduler) Lookup(name string) (*Task, error) {
 		return t, nil
 	}
 	logger.Error("Could not find task within the task list", zap.String("task", name))
-	return nil, fmt.Errorf("could not find task within the task list")
+
+	return nil, &TaskNotFoundError{TaskID: name}
 }
 
 func (schd *Scheduler) Stop() {
