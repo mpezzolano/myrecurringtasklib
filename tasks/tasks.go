@@ -3,10 +3,11 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"os"
+
 	"time"
 
 	"github.com/rs/xid"
+
 	"go.uber.org/zap"
 )
 
@@ -16,21 +17,6 @@ func New() *Scheduler {
 	logger.Info("Creating new scheduler")
 	return &Scheduler{
 		tasks: make(map[string]*Task),
-	}
-}
-
-func logTaskToFile(id string, status string) {
-	fileName := "task_logs.txt"
-	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return
-	}
-
-	logEntry := fmt.Sprintf("Task ID: %s, Date: %s, Status: %s\n", id, time.Now().Format(time.RFC3339), status)
-	_, err = file.WriteString(logEntry)
-	if err != nil {
-		fmt.Println("Error writing to file:", err)
 	}
 }
 
@@ -140,10 +126,10 @@ func (schd *Scheduler) execTask(t *Task) {
 				Cause: err,
 			})
 			logger.Error("Task failed", zap.String("task", t.Name), zap.Error(err))
-			logTaskToFile(t.id, "Failed")
+			WriteToFile(t.id, "Failed")
 		} else {
 			t.SuccessCount++
-			logTaskToFile(t.id, "Success")
+			WriteToFile(t.id, "Success")
 		}
 		t.Unlock()
 
